@@ -1,0 +1,185 @@
+#!/usr/bin/python3
+# encoding: utf-8
+
+# --                                                            ; {{{1
+#
+# File        : nametag
+# Maintainer  : FC Stegerman <flx@obfusk.net>
+# Date        : 2022-06-09
+#
+# Copyright   : Copyright (C) 2022  FC Stegerman
+# Version     : v0.0.1
+# License     : GPLv3+
+#
+# --                                                            ; }}}1
+
+                                                                # {{{1
+r"""
+
+nametag - set audio file tags based on file name
+
+...
+
+
+Tests
+=====
+
+>>> regexes, tr_f, rules = configure()
+>>> _process = process_decorator()
+>>> @_process
+... def if_then_else(info, tr):
+...   if info.artist == "The_Gathering" and info.album == "if_then_else":
+...     return info._map_values(lambda k, v: v if k == "album" else tr(v))
+>>> rules += _process.rules
+
+>>> fn = ".../Between_the_Buried_and_Me/04-Colors_(2007)/05-Ants_of_the_Sky.mp3"
+>>> RX.search(fn) is not None
+True
+>>> info = parse(fn)
+>>> info
+Info(artist='Between_the_Buried_and_Me', album='Colors', track='05', title='Ants_of_the_Sky', ext='mp3', album_n='04', year='2007')
+>>> info_ = process(info, tr_f, rules)
+>>> info_
+Info(artist='Between the Buried and Me', album='Colors', track='05', title='Ants of the Sky', ext='mp3', album_n='04', year='2007')
+>>> print(str(info_))
+artist='Between the Buried and Me' album='Colors' track='05' title='Ants of the Sky' ext='mp3' album_n='04' year='2007'
+
+>>> fn = ".../Opeth/08-Ghost_Reveries_(2005)/05-Reverie|Harlequin_Forest.mp3"
+>>> RX.search(fn) is not None
+True
+>>> info = parse(fn)
+>>> info
+Info(artist='Opeth', album='Ghost_Reveries', track='05', title='Reverie|Harlequin_Forest', ext='mp3', album_n='08', year='2005')
+>>> info_ = process(info, tr_f, rules)
+>>> info_
+Info(artist='Opeth', album='Ghost Reveries', track='05', title='Reverie/Harlequin Forest', ext='mp3', album_n='08', year='2005')
+>>> print(str(info_))
+artist='Opeth' album='Ghost Reveries' track='05' title='Reverie/Harlequin Forest' ext='mp3' album_n='08' year='2005'
+
+>>> fn = ".../The_Gathering/03-if_then_else_(2000)/01-Rollercoaster.mp3"
+>>> RX.search(fn) is not None
+True
+>>> info = parse(fn)
+>>> info
+Info(artist='The_Gathering', album='if_then_else', track='01', title='Rollercoaster', ext='mp3', album_n='03', year='2000')
+>>> info_ = process(info, tr_f, rules)
+>>> info_
+Info(artist='The Gathering', album='if_then_else', track='01', title='Rollercoaster', ext='mp3', album_n='03', year='2000')
+>>> print(str(info_))
+artist='The Gathering' album='if_then_else' track='01' title='Rollercoaster' ext='mp3' album_n='03' year='2000'
+
+"""                                                             # }}}1
+
+import re, sys
+from collections import namedtuple
+from pathlib import Path
+
+import click, taglib
+
+__version__ = "0.0.1"
+name        = "nametag"
+
+RCFILE      = Path.home() / ".nametagrc.py"
+
+# default pattern; matches artist, album, track, title, ext;
+# optionally: album_n, year; matches e.g.
+# "Between_the_Buried_and_Me/04-Colors_(2007)/05-Ants_of_the_Sky.mp3"
+RX = re.compile(r"""                                            # {{{1
+    / (?P<artist> [^/]* )
+    / (?: (?P<album_n> \d+ ) - )?
+      (?P<album> [^/]*? )
+      (?: _\( (?P<year> \d{4} ) \) )?
+    / (?P<track> \d+ ) (?: - (?P<title> [^/]* ) )?
+      \. (?P<ext> mp3 | ogg | flac )
+    \Z
+  """, re.X)                                                    # }}}1
+
+# default character substitution
+TR = { "_|": " /" }
+
+class ParseError(RuntimeError): pass
+
+Info = namedtuple("Info", "artist album track title ext album_n year".split())
+Info._map_values = lambda self, f: type(self)(**{ k: f(k, v) for k, v in self._asdict().items() })
+Info.__str__ = lambda self: " ".join(f"{k}={repr(v)}" for k, v in self._asdict().items())
+
+@click.command(help = "set audio file tags based on file name")
+@click.option("-c", "--config-file", help = "Configuration file.",
+              type = click.Path(exists = True, path_type = Path))
+@click.option("-v", "--verbose", count = True, help = "Be verbose.")
+@click.option("-n", "--dry-run", "--no-act", is_flag = True,
+              help = "Do not modify files.")
+@click.argument("files", nargs = -1, type = click.Path(exists = True))
+@click.version_option(__version__)
+def cli(config_file, verbose, dry_run, files):
+  if config_file is None and RCFILE.exists():
+    config_file = RCFILE
+  regexes, tr_f, rules = configure(config_file)
+  for f in files:
+    fn = Path(f).resolve()
+    if info := parse(fn, regexes):
+      info_ = process(info, tr_f, rules)
+      if verbose:
+        print(f"{fn}:")
+        print(f"  - {info}\n  + {info_}" if verbose > 1 else f"  {info_}")
+        print()
+      if not dry_run:
+        tag(fn, info_)
+    else:
+      raise ParseError(f"parse failed for: {f}")
+
+def configure(config_file = None):
+  cfg = dict(regexes = [RX], tr = TR.copy(), process = process_decorator())
+  if config_file is not None:
+    with config_file.open() as fh:
+      exec(fh.read(), cfg.copy())
+  trans = mktrans(cfg["tr"])
+  tr_f  = lambda s: s.translate(trans)
+  return (cfg["regexes"], tr_f, cfg["process"].rules)
+
+def process_decorator():
+  def decorator(f):
+    decorator.rules.append(f)
+    return f
+  decorator.rules = []
+  return decorator
+
+def parse(fn, regexes = [RX]):
+  for rx in regexes:
+    if m := rx.search(fn):
+      return Info(**m.groupdict())
+  return None
+
+def process(info, tr_f, rules):
+  for r in rules:
+    if info_ := r(info, tr_f):
+      return info_ if isinstance(info_, Info) else Info(**info_)
+  return info._map_values(lambda k, v: tr_f(v))
+
+def mktrans(tr):
+  d = {}
+  for k, v in tr.items():
+    d.update(str.maketrans(k, v))
+  return d
+
+def tag(fn, info):
+  with taglib.File(fn, save_on_exit = True) as t:
+    t.tags["ARTIST"]      = [info.artist]
+    t.tags["ALBUM"]       = [info.album]
+    t.tags["TRACKNUMBER"] = [info.track]
+    t.tags["TITLE"]       = [info.title or f"[track {info.track}]"]
+    if info.year:
+      t.tags["DATE"]      = [info.year]
+
+def main():
+  cli(prog_name = name)
+
+if __name__ == "__main__":
+  if "--doctest" in sys.argv:
+    verbose = "--verbose" in sys.argv
+    import doctest
+    if doctest.testmod(verbose = verbose)[0]: sys.exit(1)
+  else:
+    main()
+
+# vim: set tw=70 sw=2 sts=2 et fdm=marker :
