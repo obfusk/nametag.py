@@ -26,7 +26,7 @@ jobs:
       run: make test
     - name: Test on mp3 file
       run: |
-        printf '@rule\ndef f(): pass\n' > ~/.nametagrc.py
+        printf '@rule\ndef f(info, tr): pass\n' > ~/.nametagrc.py
         mkdir -p 'Between_the_Buried_and_Me/04-Colors_(2007)'
         wget -O 'Between_the_Buried_and_Me/04-Colors_(2007)/05-Ants_of_the_Sky.mp3' \
           -- https://jiten.obfusk.dev/static/audio/2260050.mp3
