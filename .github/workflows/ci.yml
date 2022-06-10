@@ -26,9 +26,10 @@ jobs:
       run: make test
     - name: Test on mp3 file
       run: |
+        printf '@rule\ndef f(): pass\n' > ~/.nametagrc.py
         mkdir -p 'Between_the_Buried_and_Me/04-Colors_(2007)'
         wget -O 'Between_the_Buried_and_Me/04-Colors_(2007)/05-Ants_of_the_Sky.mp3' \
           -- https://jiten.obfusk.dev/static/audio/2260050.mp3
         eyeD3 --remove-all 'Between_the_Buried_and_Me/04-Colors_(2007)/05-Ants_of_the_Sky.mp3'
-        nametag -vv 'Between_the_Buried_and_Me/04-Colors_(2007)/05-Ants_of_the_Sky.mp3'
-        diff <( echo $'  ALBUM       = Colors\n  ARTIST      = Between the Buried and Me\n  DATE        = 2007\n  TITLE       = Ants of the Sky\n  TRACKNUMBER = 05' ) <( pyprinttags 'Between_the_Buried_and_Me/04-Colors_(2007)/05-Ants_of_the_Sky.mp3' | tail -n +2 )
+        nametag --show-config -vv 'Between_the_Buried_and_Me/04-Colors_(2007)/05-Ants_of_the_Sky.mp3'
+        diff <( printf $'  ALBUM       = Colors\n  ARTIST      = Between the Buried and Me\n  DATE        = 2007\n  TITLE       = Ants of the Sky\n  TRACKNUMBER = 05\n' ) <( pyprinttags 'Between_the_Buried_and_Me/04-Colors_(2007)/05-Ants_of_the_Sky.mp3' | tail -n +2 )
