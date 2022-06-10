@@ -2,7 +2,7 @@ from pathlib import Path
 import setuptools
 
 # from nametag import __version__                             #  FIXME
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 
 info = Path(__file__).with_name("README.md").read_text(encoding = "utf8")
 
@@ -30,7 +30,7 @@ setuptools.setup(
     "Topic :: Multimedia :: Sound/Audio",
     "Topic :: Utilities",
   ],
-  keywords          = "audio mp3 tag",
+  keywords          = "audio flac mp3 ogg regex tag",
   py_modules        = ["nametag"],
   entry_points      = dict(console_scripts = ["nametag = nametag:main"]),
   python_requires   = ">=3.8",
