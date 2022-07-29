@@ -20,6 +20,8 @@ jobs:
       run: |
         sudo apt install libtag1-dev eyed3
         python3 -m pip install --upgrade pip
+        python3 -m pip install --upgrade Cython   # FIXME
+        PYTAGLIB_CYTHONIZE=1 python3 -m pip install --upgrade pytaglib
     - name: Install
       run: make install
     - name: Test
