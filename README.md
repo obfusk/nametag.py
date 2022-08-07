@@ -2,7 +2,7 @@
 
     File        : README.md
     Maintainer  : FC Stegerman <flx@obfusk.net>
-    Date        : 2022-06-10
+    Date        : 2022-08-07
 
     Copyright   : Copyright (C) 2022  FC Stegerman
     Version     : v0.1.0
@@ -79,22 +79,25 @@ $ nametag --help
 
 ## Tab Completion
 
+NB: the syntax for the environment variable changed in click >= 8.0,
+use e.g. `source_bash` instead of `bash_source` for older versions.
+
 For Bash, add this to `~/.bashrc`:
 
 ```bash
-eval "$(_NAMETAG_COMPLETE=source_bash nametag)"
+eval "$(_NAMETAG_COMPLETE=bash_source nametag)"
 ```
 
 For Zsh, add this to `~/.zshrc`:
 
 ```zsh
-eval "$(_NAMETAG_COMPLETE=source_zsh nametag)"
+eval "$(_NAMETAG_COMPLETE=zsh_source nametag)"
 ```
 
 For Fish, add this to `~/.config/fish/completions/nametag.fish`:
 
 ```fish
-eval (env _NAMETAG_COMPLETE=source_fish nametag)
+eval (env _NAMETAG_COMPLETE=fish_source nametag)
 ```
 
 ## Requirements
